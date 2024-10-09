@@ -39,13 +39,13 @@ namespace Chess
         private void Form1_Load(object sender, EventArgs e)
         {
             lbl_info.Location = new Point(0, celda * 8 + 5);
-            lbl_info.Size = new Size(320, 15);
+            lbl_info.Size = new Size(200, 20);
             lbl_info.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             MostrarInfoFichas();
             this.Controls.Add(lbl_info);
             
             lbl_tiempoBlancas.Location = new Point(0, celda * 8 + 20);
-            lbl_tiempoBlancas.Size = new Size(320, 15);
+            lbl_tiempoBlancas.Size = new Size(200, 20);
             lbl_tiempoBlancas.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             this.Controls.Add(lbl_tiempoBlancas);
             
@@ -83,17 +83,12 @@ namespace Chess
             string stringTiempoBlancas = ConvertirMilisegundosAString(tiempoRestanteBlancas);
             string stringTiempoNegras = ConvertirMilisegundosAString(tiempoRestanteNegras);
             lbl_tiempoBlancas.Text = $"Blancas: {stringTiempoBlancas} - Negras: {stringTiempoNegras}";
-            if (tiempoRestanteNegras == 0)
+            if (tiempoRestanteNegras == 0 || tiempoRestanteBlancas == 0)
             {
+                string ganador = tiempoRestanteBlancas == 0 ? "Negras" : "Blancas";
                 cronometro.Stop();
-                MessageBox.Show("Se ha acabado el tiempo, Las fichas blancas han ganado");
+                MessageBox.Show($"Se ha acabado el tiempo, Las fichas {ganador} han ganado");
                 this.Close();
-            } else if (tiempoRestanteBlancas == 0)
-            {
-                cronometro.Stop();
-                MessageBox.Show("Se ha acabado el tiempo, Las fichas negras han ganado");
-                this.Close();
-
             }
         }
         
@@ -139,7 +134,7 @@ namespace Chess
             LimpiarFondo();
             selected = [px, py];
             tablero[selected[0], selected[1]].BackColor = Color.Green;
-            DrawMovements(px, py);
+            PintarMovimientos(px, py);
         }
         
         private void Movimiento(int[] previous, int[] current)
@@ -184,133 +179,40 @@ namespace Chess
             return negras.Contains(tablero[px, py].Text);
         }
 
-        private void DrawMovements(int px, int py)
+        private void PintarMovimientos(int px, int py)
         {
-            string piece = tablero[px, py].Text;
-
-            switch (piece)
+            List<int[]> movimientos = ObtenerListaDeMovimientos(px, py);
+            PintarListaDeMovimientos(movimientos);
+        }
+        private void PintarListaDeMovimientos(List<int[]> movimientos)
+        {
+            foreach (int[] movimiento in movimientos)
+            {
+                tablero[movimiento[0], movimiento[1]].BackColor = Color.Red;
+            }
+        }
+        
+        private List<int[]> ObtenerListaDeMovimientos(int px, int py)
+        {
+            string ficha = fichas[px, py];
+            switch (ficha)
             {
                 case "♙" or "♟":
-                    MovimientosPeon(px, py, turnoBlanca);
-                    break;
+                    return MovimientosFichas.ListaMovimientosPeon(px, py, turnoBlanca, fichas);
                 case "♗" or "♝":
-                    List<List<int>> sumadorAlfil = new List<List<int>>([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
-                    MovimientosDirigido(px, py, turnoBlanca, sumadorAlfil);
-                    break;
+                    return MovimientosFichas.ListaMovimientosAlfil(px, py, turnoBlanca, fichas);
                 case "♜" or "♖":
-                    List<List<int>> sumadorTorre = new List<List<int>>([[1, 0], [0, 1], [-1, 0], [0, -1]]);
-                    MovimientosDirigido(px, py, turnoBlanca, sumadorTorre);
-                    break;
+                    return MovimientosFichas.ListaMovimientosTorre(px, py, turnoBlanca, fichas);
                 case "♘" or "♞":
-                    MovimientosCaballo(px, py, turnoBlanca);
-                    break;
+                    return MovimientosFichas.ListaMovimientosCaballo(px, py, turnoBlanca, fichas);
                 case "♚" or "♔":
-                    MovimientosRey(px, py, turnoBlanca);
-                    break;
+                    return MovimientosFichas.ListaMovimientosRey(px, py, turnoBlanca, fichas);
                 case "♛" or "♕":
-                    List<List<int>> sumadorRectos = new List<List<int>>([[1, 0], [0, 1], [-1, 0], [0, -1]]);
-                    MovimientosDirigido(px, py, turnoBlanca, sumadorRectos);
-                    List<List<int>> sumadorDiagonales = new List<List<int>>([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
-                    MovimientosDirigido(px, py, turnoBlanca, sumadorDiagonales);
-                    break;
+                    return MovimientosFichas.ListaMovimientosReina(px, py, turnoBlanca, fichas);
+                default:
+                    return new List<int[]>(); 
             }
         }
-        
-        private void MovimientosPeon(int px, int py, bool esBlanco)
-        {
-            bool esPrimerMovimiento = (px == 1 && esBlanco) || (px == 6 && !esBlanco);
-            int multiplicador = esBlanco ? 1 : -1;
-            PintarPosiblesAtaquesPeon(px, py, esBlanco);
-            for (int i = 1; i <= (esPrimerMovimiento ? 2 : 1); i++)
-            {
-                if (!(tablero[px + (i * multiplicador), py].Text == "")) break;
-                tablero[px + (i * multiplicador), py].BackColor = Color.Red;
-            }
-        }
-        
-        private void PintarPosiblesAtaquesPeon(int px, int py, bool esBlanco) {
-            string[] enemigos = esBlanco ? negras : blancas;
-            List<int[]> posiblesAtaques = new List<int[]>([[px - 1, py - 1], [px - 1, py + 1], [px + 1, py - 1], [px + 1, py + 1]]);
-            foreach (int[] posicion in posiblesAtaques)
-            {
-                if (ValidarIndiceFueraDeRango(posicion)) continue;
-                Button fichaActual = tablero[posicion[0], posicion[1]];
-                if (!enemigos.Contains(fichaActual.Text)) continue;
-                fichaActual.BackColor = Color.Red;   
-            }
-        }
-            
-        private bool ValidarIndiceFueraDeRango(int[] posicion)
-        {
-            bool indiceFueraDeRango = !(0 <= posicion[0] && posicion[0] < 8 && 0 <= posicion[1] && posicion[1] < 8);
-            return indiceFueraDeRango;
-
-        }
-
-        private void MovimientosDirigido(int px, int py, bool esBlanco, List<List<int>> sumadores)
-        {           
-            foreach (List<int> sumador in sumadores)
-            {
-                int[] posicionActual = [px, py];
-                bool fichaEncontrada = false;
-                while (!fichaEncontrada)
-                {
-                    posicionActual[0] += sumador[0];
-                    posicionActual[1] += sumador[1];
-                    if (ValidarIndiceFueraDeRango(posicionActual)) break;
-                    Button botonActual = tablero[posicionActual[0], posicionActual[1]];
-                    string[] fichasEnemigas = esBlanco ? negras : blancas;
-                    if (botonActual.Text != "" && !(fichasEnemigas.Contains(botonActual.Text)))
-                    {
-                        fichaEncontrada = true;
-                        break;
-                    }
-                    botonActual.BackColor = Color.Red;
-                    if (fichasEnemigas.Contains(botonActual.Text)) {
-                        fichaEncontrada = true;
-                    }
-                }
-            }
-        }
-        
-        private void MovimientosCaballo(int px, int py, bool esBlanco)
-        {
-
-            List<List<int>> multiplicadores = new List<List<int>>([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
-            List<List<int>> posiblesMovimientos = new List<List<int>>([[2, 1], [1, 2]]);
-            foreach (List<int> multiplicador in multiplicadores)
-            {
-                foreach(List<int> movimiento in posiblesMovimientos)
-                {
-                    int[] posicionActual = [px, py];
-                    posicionActual[0] += movimiento[0] * multiplicador[0];
-                    posicionActual[1] += movimiento[1] * multiplicador[1];
-                    if (ValidarIndiceFueraDeRango(posicionActual)) continue;
-                    Button botonActual = tablero[posicionActual[0], posicionActual[1]];
-                    string[] fichasEnemigas = esBlanco ? negras : blancas;
-                    if (botonActual.Text != "" && !(fichasEnemigas.Contains(botonActual.Text))) continue;
-                    botonActual.BackColor = Color.Red;
-                }
-            }
-        }
-        
-        private void MovimientosRey(int px, int py, bool esBlanco)
-        {
-            List<int[]> movimientos = new List<int[]>([[0, -1], [-1, 0], [1, 0], [0, 1],
-                                                       [- 1, - 1], [- 1, 1], [1, - 1], [1,  1]]);
-            foreach(int[] movimiento in movimientos)
-            {
-                int[] posicionActual = [px, py];
-                posicionActual[0] += movimiento[0];
-                posicionActual[1] += movimiento[1];
-                if (ValidarIndiceFueraDeRango(posicionActual)) continue;
-                Button botonActual = tablero[posicionActual[0], posicionActual[1]];
-                string[] fichasEnemigas = esBlanco ? negras : blancas;
-                if (botonActual.Text != "" && !(fichasEnemigas.Contains(botonActual.Text))) continue;
-                botonActual.BackColor = Color.Red;
-            }
-        }
-
         public void ValidarHayGanador()
         {
             List<string> fichasRestantesBlancas = new List<string>();
